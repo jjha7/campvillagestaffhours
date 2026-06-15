@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Camp Village — Clock In / Out</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#12355B;--gold:#F4B942;--sky:#4EA5D9;--mid:#1A4A7A;
+  --green:#16A34A;--greenbg:#DCFCE7;--greenborder:#86EFAC;
+  --red:#DC2626;--redbg:#FEE2E2;--redborder:#FECACA;
+  --white:#FFFFFF;--off:#F8FAFC;--slate:#64748B;--dark:#1E293B;
+}
+html,body{min-height:100vh;background:var(--navy);font-family:'Segoe UI',system-ui,sans-serif}
+body::before{content:'';position:fixed;inset:0;
+  background:radial-gradient(circle at 20% 20%,rgba(244,185,66,.07) 0%,transparent 50%),
+             radial-gradient(circle at 80% 80%,rgba(78,165,217,.07) 0%,transparent 50%);
+  pointer-events:none}
+
+.container{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 20px;gap:18px}
+
+.header{text-align:center}
+.sun{font-size:2.4rem;display:block;margin-bottom:6px}
+.header h1{font-size:1.85rem;font-weight:800;color:var(--white);letter-spacing:-.02em}
+.header .sub{font-size:.82rem;color:var(--gold);margin-top:3px;font-style:italic}
+
+/* card */
+.card{background:var(--white);border-radius:20px;padding:26px 22px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+
+/* clock */
+.datetime{text-align:center;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid #F1F5F9}
+.time{font-size:2.3rem;font-weight:800;color:var(--navy);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.date{font-size:.85rem;color:var(--slate);margin-top:2px}
+
+.label{font-size:.75rem;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;display:block}
+
+/* select */
+select{width:100%;padding:12px 14px;border:2px solid #E2E8F0;border-radius:12px;font-size:.97rem;color:var(--dark);background:var(--off);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;cursor:pointer;transition:border-color .15s;margin-bottom:16px}
+select:focus{outline:none;border-color:var(--sky)}
+
+/* PIN pad */
+.pin-section{margin-bottom:16px}
+.pin-display{display:flex;gap:10px;justify-content:center;margin:10px 0 14px}
+.pin-dot{width:18px;height:18px;border-radius:50%;border:2px solid #CBD5E1;transition:all .15s}
+.pin-dot.filled{background:var(--navy);border-color:var(--navy)}
+.pin-dot.error{background:var(--red);border-color:var(--red)}
+.pin-dot.success{background:var(--green);border-color:var(--green)}
+
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.key{padding:16px 8px;border:1.5px solid #E2E8F0;border-radius:12px;background:var(--off);font-size:1.3rem;font-weight:700;color:var(--dark);cursor:pointer;transition:all .12s;text-align:center;user-select:none}
+.key:active{background:var(--navy);color:var(--white);transform:scale(.95)}
+.key.del{font-size:1rem;color:var(--slate)}
+.key.clear{font-size:.8rem;color:var(--red);border-color:var(--redborder)}
+
+/* buttons */
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.btn{padding:15px;border:none;border-radius:13px;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:3px}
+.btn-in{background:var(--greenbg);color:var(--green);border:2px solid var(--greenborder)}
+.btn-in:hover{background:var(--green);color:var(--white)}
+.btn-out{background:var(--redbg);color:var(--red);border:2px solid var(--redborder)}
+.btn-out:hover{background:var(--red);color:var(--white)}
+.btn-icon{font-size:1.3rem}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* status */
+.status{margin-top:14px;padding:13px;border-radius:11px;text-align:center;font-size:.88rem;font-weight:600;display:none}
+.status.success{background:var(--greenbg);color:var(--green);border:1.5px solid var(--greenborder);display:block}
+.status.error{background:var(--redbg);color:var(--red);border:1.5px solid var(--redborder);display:block}
+.status.loading{background:#EFF6FF;color:#2563EB;border:1.5px solid #BFDBFE;display:block}
+
+/* already clocked in warning */
+.already-msg{display:none;margin-top:10px;padding:11px 14px;background:#FEF3C7;border:1.5px solid #FDE68A;border-radius:11px;font-size:.85rem;color:#92400E;text-align:center;font-weight:600}
+
+/* recent */
+.last{background:rgba(255,255,255,.07);border-radius:14px;padding:14px 16px;width:100%;max-width:380px;border:1px solid rgba(255,255,255,.1)}
+.last-title{font-size:.7rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.last-row{display:flex;justify-content:space-between;align-items:center;font-size:.8rem;color:rgba(255,255,255,.8);padding:3px 0;gap:8px}
+.last-name{font-weight:600;color:var(--white);flex:1}
+.badge{font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0}
+.badge.in{background:var(--greenbg);color:var(--green)}
+.badge.out{background:var(--redbg);color:var(--red)}
+
+.footer{font-size:.7rem;color:rgba(255,255,255,.28);text-align:center}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <span class="sun">&#127774;</span>
+    <h1>Camp Village</h1>
+    <div class="sub">Staff Clock In / Out — Summer 2026</div>
+  </div>
+
+  <div class="card">
+    <div class="datetime">
+      <div class="time" id="clock">--:-- --</div>
+      <div class="date" id="dateDisplay"></div>
+    </div>
+
+    <label class="label" for="staffSelect">Your Name</label>
+    <select id="staffSelect" onchange="onNameChange()">
+      <option value="">— Select your name —</option>
+      <option>Parker Bailey</option>
+      <option>Pearson Bailey</option>
+      <option>Preston Bailey</option>
+      <option>Melissa Bailey</option>
+      <option>Lala Dunson</option>
+      <option>Ladon Dunson</option>
+      <option>Liberti Dunson</option>
+      <option>Loyalti Dunson</option>
+      <option>Domia Edwards</option>
+      <option>Coach Keith Frazier</option>
+      <option>Dashia Hawes</option>
+      <option>Jakari Hawes</option>
+      <option>Jigyasa Jha</option>
+      <option>Coach Jimmy Johnson</option>
+      <option>Shi LaChef</option>
+      <option>Laila Moore</option>
+      <option>Shelia Moses</option>
+      <option>Benecia Ponder</option>
+      <option>Briana Roach</option>
+      <option>Dr. Venita Roberson</option>
+      <option>Chasity Rookwood</option>
+      <option>Akil Russell</option>
+      <option>Navon Smith</option>
+      <option>Akura Smith</option>
+      <option>Master Adrian Spellen</option>
+      <option>Janice Wilbourn</option>
+      <option>Carolyn Wilbourn</option>
+      <option>Coach Andrew Worthem</option>
+    </select>
+
+    <div class="already-msg" id="alreadyMsg"></div>
+
+    <div class="pin-section">
+      <label class="label">Enter Your PIN</label>
+      <div class="pin-display">
+        <div class="pin-dot" id="d0"></div>
+        <div class="pin-dot" id="d1"></div>
+        <div class="pin-dot" id="d2"></div>
+        <div class="pin-dot" id="d3"></div>
+      </div>
+      <div class="numpad">
+        <div class="key" onclick="pressKey('1')">1</div>
+        <div class="key" onclick="pressKey('2')">2</div>
+        <div class="key" onclick="pressKey('3')">3</div>
+        <div class="key" onclick="pressKey('4')">4</div>
+        <div class="key" onclick="pressKey('5')">5</div>
+        <div class="key" onclick="pressKey('6')">6</div>
+        <div class="key" onclick="pressKey('7')">7</div>
+        <div class="key" onclick="pressKey('8')">8</div>
+        <div class="key" onclick="pressKey('9')">9</div>
+        <div class="key clear" onclick="clearPin()">CLR</div>
+        <div class="key" onclick="pressKey('0')">0</div>
+        <div class="key del" onclick="deleteKey()">⌫</div>
+      </div>
+    </div>
+
+    <div class="btns">
+      <button class="btn btn-in" onclick="punch('IN')" id="btnIn">
+        <span class="btn-icon">&#9654;</span>Clock In
+      </button>
+      <button class="btn btn-out" onclick="punch('OUT')" id="btnOut">
+        <span class="btn-icon">&#9646;&#9646;</span>Clock Out
+      </button>
+    </div>
+
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="last" id="lastBox">
+    <div class="last-title">Recent Entries Today</div>
+    <div id="entryList"><div style="color:rgba(255,255,255,.35);font-size:.78rem">No entries yet</div></div>
+  </div>
+
+  <div class="footer">Camp Village, Inc. &nbsp;·&nbsp; Your PIN is private — do not share it</div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbywAX1bDiFVxfhgUslJFAXdgwY2xu8CqdfOPnNCWQJFMa9YBj9Fqrc5hevlvIuK-tWL/exec";
+
+// Staff PINs — share each person's PIN privately
+// To change a PIN just update it here and re-upload
+const PINS = {
+  "Parker Bailey":        "1001",
+  "Pearson Bailey":       "1002",
+  "Preston Bailey":       "1003",
+  "Melissa Bailey":       "1004",
+  "Lala Dunson":          "2001",
+  "Ladon Dunson":         "2002",
+  "Liberti Dunson":       "2003",
+  "Loyalti Dunson":       "2004",
+  "Domia Edwards":        "3001",
+  "Coach Keith Frazier":  "3002",
+  "Dashia Hawes":         "4001",
+  "Jakari Hawes":         "4002",
+  "Jigyasa Jha":          "4003",
+  "Coach Jimmy Johnson":  "5001",
+  "Shi LaChef":           "5002",
+  "Laila Moore":          "5003",
+  "Shelia Moses":         "6001",
+  "Benecia Ponder":       "6002",
+  "Briana Roach":         "6003",
+  "Dr. Venita Roberson":  "7001",
+  "Chasity Rookwood":     "7002",
+  "Akil Russell":         "7003",
+  "Navon Smith":          "8001",
+  "Akura Smith":          "8002",
+  "Master Adrian Spellen":"8003",
+  "Janice Wilbourn":      "9001",
+  "Carolyn Wilbourn":     "9002",
+  "Coach Andrew Worthem": "9003",
+};
+// ═══════════════════════════════════════════════════════════
+
+let pin = "";
+let entries = JSON.parse(localStorage.getItem('cv_entries2') || '[]');
+
+// Clock
+function updateClock(){
+  const now = new Date();
+  const h=now.getHours(), m=now.getMinutes(), s=now.getSeconds();
+  const ampm = h>=12?'PM':'AM', hh=h%12||12;
+  document.getElementById('clock').textContent =
+    hh+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+' '+ampm;
+  document.getElementById('dateDisplay').textContent =
+    now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+updateClock(); setInterval(updateClock,1000);
+
+// PIN pad
+function pressKey(k){
+  if(pin.length>=4) return;
+  pin += k;
+  updateDots();
+}
+function deleteKey(){ pin=pin.slice(0,-1); updateDots(''); }
+function clearPin(){ pin=''; updateDots(''); }
+
+function updateDots(state=''){
+  for(let i=0;i<4;i++){
+    const d=document.getElementById('d'+i);
+    d.className='pin-dot';
+    if(state) d.classList.add(state);
+    else if(i<pin.length) d.classList.add('filled');
+  }
+}
+
+// Check if already clocked in today (no clock out yet)
+function getTodayStatus(name){
+  const today = new Date().toDateString();
+  const todayEntries = entries.filter(e=>e.name===name && new Date(e.ts).toDateString()===today);
+  if(!todayEntries.length) return null;
+  const last = todayEntries[todayEntries.length-1];
+  return last.type; // 'IN' or 'OUT'
+}
+
+function onNameChange(){
+  const name = document.getElementById('staffSelect').value;
+  const msg = document.getElementById('alreadyMsg');
+  clearPin();
+  hideStatus();
+  if(!name){ msg.style.display='none'; return; }
+  const status = getTodayStatus(name);
+  if(status==='IN'){
+    msg.style.display='block';
+    msg.textContent = name.split(' ')[0] + ' is currently clocked IN. Tap Clock Out when leaving.';
+    document.getElementById('btnIn').disabled=true;
+    document.getElementById('btnOut').disabled=false;
+  } else if(status==='OUT'){
+    msg.style.display='block';
+    msg.textContent = name.split(' ')[0] + ' already clocked in and out today.';
+    document.getElementById('btnIn').disabled=true;
+    document.getElementById('btnOut').disabled=true;
+  } else {
+    msg.style.display='none';
+    document.getElementById('btnIn').disabled=false;
+    document.getElementById('btnOut').disabled=false;
+  }
+}
+
+async function punch(type){
+  const name = document.getElementById('staffSelect').value;
+  if(!name){ showStatus('Please select your name!','error'); return; }
+  if(pin.length<4){ showStatus('Enter your 4-digit PIN','error'); shakePin(); return; }
+
+  // Verify PIN
+  if(PINS[name] !== pin){
+    showStatus('Wrong PIN — try again','error');
+    updateDots('error');
+    setTimeout(()=>{ pin=''; updateDots(''); },1000);
+    return;
+  }
+
+  // One clock-in per day check
+  const todayStatus = getTodayStatus(name);
+  if(type==='IN' && todayStatus==='IN'){
+    showStatus('Already clocked in today!','error');
+    clearPin(); return;
+  }
+  if(type==='OUT' && (!todayStatus || todayStatus==='OUT')){
+    showStatus('Not clocked in yet!','error');
+    clearPin(); return;
+  }
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
+  const dateStr = now.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});
+
+  document.getElementById('btnIn').disabled=true;
+  document.getElementById('btnOut').disabled=true;
+  showStatus('Recording...','loading');
+  updateDots('success');
+
+  try {
+    const params = new URLSearchParams({name, type, date:dateStr, time:timeStr, timestamp:now.toISOString()});
+    await fetch(SCRIPT_URL + '?' + params.toString(), {method:'GET', mode:'no-cors'});
+
+    entries.push({name, type, time:timeStr, ts:now.toISOString()});
+    localStorage.setItem('cv_entries2', JSON.stringify(entries));
+    renderEntries();
+
+    const emoji = type==='IN' ? '✓ Clocked In' : '✓ Clocked Out';
+    showStatus(`${emoji} — ${name.split(' ')[0]} at ${timeStr}`,'success');
+    document.getElementById('staffSelect').value='';
+    document.getElementById('alreadyMsg').style.display='none';
+
+  } catch(err){
+    showStatus('Error — try again','error');
+  }
+
+  setTimeout(()=>{
+    pin=''; updateDots('');
+    document.getElementById('btnIn').disabled=false;
+    document.getElementById('btnOut').disabled=false;
+  },2000);
+}
+
+function renderEntries(){
+  const list=document.getElementById('entryList');
+  const today=new Date().toDateString();
+  const te=entries.filter(e=>new Date(e.ts).toDateString()===today).slice(-6).reverse();
+  if(!te.length){list.innerHTML='<div style="color:rgba(255,255,255,.35);font-size:.78rem">No entries yet</div>';return;}
+  list.innerHTML=te.map(e=>`
+    <div class="last-row">
+      <span class="last-name">${e.name.split(' ').slice(0,2).join(' ')}</span>
+      <span style="color:rgba(255,255,255,.45);font-size:.72rem">${e.time}</span>
+      <span class="badge ${e.type==='IN'?'in':'out'}">${e.type}</span>
+    </div>`).join('');
+}
+renderEntries();
+
+function showStatus(msg,type){
+  const el=document.getElementById('status');
+  el.textContent=msg; el.className='status '+type;
+}
+function hideStatus(){
+  document.getElementById('status').className='status';
+}
+function shakePin(){
+  const dots=document.querySelectorAll('.pin-dot');
+  dots.forEach(d=>{d.classList.add('error');});
+  setTimeout(()=>dots.forEach(d=>d.classList.remove('error')),600);
+}
+</script>
+</body>
+</html>

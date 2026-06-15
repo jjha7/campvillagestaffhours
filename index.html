@@ -321,7 +321,7 @@ async function punch(type){
 
   try {
     const params = new URLSearchParams({name, type, date:dateStr, time:timeStr, timestamp:now.toISOString()});
-    await fetch(SCRIPT_URL + '?' + params.toString(), {method:'GET', mode:'no-cors'});
+    await new Promise((r)=>{const i=new Image();i.onload=i.onerror=r;i.src=SCRIPT_URL+'?'+params.toString();});
 
     entries.push({name, type, time:timeStr, ts:now.toISOString()});
     localStorage.setItem('cv_entries2', JSON.stringify(entries));
